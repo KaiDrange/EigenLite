@@ -38,6 +38,12 @@ class EigenLite {
     void setPollTime(unsigned pollTime);
     void setLED(const char* dev, unsigned course, unsigned key, unsigned colour);
 
+    bool writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period);
+
+    bool setHeadphoneEnabled(const char* dev, bool enabled);
+
+    bool setHeadphoneGain(const char* dev, unsigned gain);
+
     // logging
     static void logmsg(const char* msg);
     virtual void fireBeginDeviceInfo();
@@ -59,6 +65,7 @@ class EigenLite {
     IFW_Reader* fwReader() { return fwReader_; }
 
    private:
+    EF_Harp* findAudioDevice(const char* dev);
     void deviceDead(const char* dev, unsigned reason);
 
     bool connectNewBaseStation();

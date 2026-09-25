@@ -64,6 +64,18 @@ void Eigenharp::setDeviceFilter(unsigned allBasePico, unsigned devEnum) {
     static_cast<EigenLite*>(impl)->setDeviceFilter(allBasePico, devEnum);
 }
 
+bool Eigenharp::writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period) {
+    return static_cast<EigenLite*>(impl)->writeAudio(dev, stereo, numFrames, period);
+}
+
+bool Eigenharp::setHeadphoneEnabled(const char* dev, bool enabled) {
+    return static_cast<EigenLite*>(impl)->setHeadphoneEnabled(dev, enabled);
+}
+
+bool Eigenharp::setHeadphoneGain(const char* dev, unsigned gain) {
+    return static_cast<EigenLite*>(impl)->setHeadphoneGain(dev, gain);
+}
+
 // basic logger, if its not overriden
 class logger : public pic::logger_t {
    public:

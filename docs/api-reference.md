@@ -57,6 +57,49 @@ Key addressing matches key event addressing (see key layout in `docs/reference/d
 
 LED states are cleared on `stop()`.
 
+### Alpha/Tau Audio Output
+
+```cpp
+bool writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period);
+bool setHeadphoneEnabled(const char* dev, bool enabled);
+bool setHeadphoneGain(const char* dev, unsigned gain);
+```
+
+Use a non-empty device identifier from `connected()`. These calls target one
+Alpha/Tau; null identifiers, unknown/disconnected devices and Pico return false.
+Wait until `process()` has returned after connection before configuring output.
+
+Output is disabled by default. Enable it explicitly with
+`setHeadphoneEnabled(dev, true)`. Gain is the native 0–127 value (higher is louder),
+default 70; values above 127 are rejected. The existing headphone limiter stays
+at its enabled default. Reapply settings when a device reconnects.
+
+`writeAudio` consumes `numFrames` stereo frames (2 × `numFrames` floats, L/R
+interleaved, finite values in [-1, 1]) synchronously; it does not retain the pointer.
+Null audio buffers, zero frame counts and periods above 3 return false.
+Audio must already be converted to the device's 48 kHz stream:
+
+| Host rate | Public period constant | EigenD quantum after caller conversion |
+| --- | --- | --- |
+| 48 kHz | `Eigenharp::AUDIO_PERIOD_48` (1) | 512 frames |
+| 96 kHz | `Eigenharp::AUDIO_PERIOD_96` (2) | 256 frames |
+| 44.1 kHz | `Eigenharp::AUDIO_PERIOD_44` (3) | approximately 557 frames |
+
+The transport accepts arbitrary positive frame counts. Start with 48 kHz and
+512 frames to preserve EigenD's proven timing. Period 0 omits the timing command;
+smaller quanta and omission of repeated timing commands still require hardware
+validation. EigenLite does not accumulate, resample, pace writes or generate silence.
+
+A true result means the call was forwarded to the existing transport, **not**
+that all frames were queued or played. The low-level writer returns no status
+and can silently drop audio when USB output space is unavailable.
+
+Serialize these calls with `process()`, lifecycle calls, LED changes and all other
+device access; no concurrent-device-access or real-time guarantee is added.
+For a separate host audio thread, keep the FIFO in the application and drain it
+on the thread that owns EigenLite. Headphone controls perform hardware register
+access and belong outside the host's real-time audio callback.
+
 ### Configuration
 
 ```cpp

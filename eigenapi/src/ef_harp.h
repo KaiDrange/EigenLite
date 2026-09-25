@@ -54,6 +54,11 @@ public:
     virtual void restartKeyboard() = 0;
     virtual void setLED(unsigned course, unsigned keynum, unsigned colour) = 0;
 
+    // Unsupported on Pico; basestations forward to alpha2::active_t.
+    virtual bool writeAudio(const float*, unsigned, unsigned) { return false; }
+    virtual bool setHeadphoneEnabled(bool) { return false; }
+    virtual bool setHeadphoneGain(unsigned) { return false; }
+
     pic::usbdevice_t* usbDevice() { return pDevice_; }
 
     bool loadFirmware(pic::usbdevice_t* pDevice, std::string ihxFile);
@@ -187,6 +192,10 @@ public:
     void restartKeyboard() override;
 
     void setLED(unsigned course, unsigned keynum, unsigned colour) override;
+
+    bool writeAudio(const float* stereo, unsigned numFrames, unsigned period) override;
+    bool setHeadphoneEnabled(bool enabled) override;
+    bool setHeadphoneGain(unsigned gain) override;
 
     static std::vector<std::string> availableDevices();
 

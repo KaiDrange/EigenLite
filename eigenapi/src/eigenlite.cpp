@@ -402,4 +402,29 @@ void EigenLite::setLED(const char* dev, unsigned course, unsigned key, unsigned 
         }
     }
 }
+EF_Harp* EigenLite::findAudioDevice(const char* dev) {
+    if (dev == nullptr || *dev == '\0' || deadDevices_.count(dev) != 0) return nullptr;
+    for (auto device : devices_) {
+        if (!device->stopping() && device->name() != nullptr && strcmp(dev, device->name()) == 0)
+            return device;
+    }
+    return nullptr;
+}
+
+bool EigenLite::writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period) {
+    if (stereo == nullptr || numFrames == 0 || period > Eigenharp::AUDIO_PERIOD_44) return false;
+    auto device = findAudioDevice(dev);
+    return device != nullptr && device->writeAudio(stereo, numFrames, period);
+}
+
+bool EigenLite::setHeadphoneEnabled(const char* dev, bool enabled) {
+    auto device = findAudioDevice(dev);
+    return device != nullptr && device->setHeadphoneEnabled(enabled);
+}
+
+bool EigenLite::setHeadphoneGain(const char* dev, unsigned gain) {
+    if (gain > 127) return false;
+    auto device = findAudioDevice(dev);
+    return device != nullptr && device->setHeadphoneGain(gain);
+}
 }  // namespace EigenApi

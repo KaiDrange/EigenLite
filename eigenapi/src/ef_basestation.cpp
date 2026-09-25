@@ -165,6 +165,24 @@ void EF_BaseStation::setLED(unsigned course, unsigned key, unsigned colour) {
     pLoop_->msg_set_led(keynum, colour);
 }
 
+bool EF_BaseStation::writeAudio(const float* stereo, unsigned numFrames, unsigned period) {
+    if (pLoop_ == nullptr || stopping()) return false;
+    pLoop_->audio_write(stereo, numFrames, period);
+    return true;
+}
+
+bool EF_BaseStation::setHeadphoneEnabled(bool enabled) {
+    if (pLoop_ == nullptr || stopping()) return false;
+    pLoop_->headphone_enable(enabled);
+    return true;
+}
+
+bool EF_BaseStation::setHeadphoneGain(unsigned gain) {
+    if (pLoop_ == nullptr || stopping()) return false;
+    pLoop_->headphone_gain(gain);
+    return true;
+}
+
 void EF_BaseStation::restartKeyboard() {
     if (pLoop_ != NULL) {
         pLoop_->restart();

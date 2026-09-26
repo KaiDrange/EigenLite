@@ -72,6 +72,10 @@ bool Eigenharp::setHeadphoneEnabled(const char* dev, bool enabled) {
     return static_cast<EigenLite*>(impl)->setHeadphoneEnabled(dev, enabled);
 }
 
+bool Eigenharp::setHeadphoneLimited(const char* dev, bool limited) {
+    return static_cast<EigenLite*>(impl)->setHeadphoneLimited(dev, limited);
+}
+
 bool Eigenharp::setHeadphoneGain(const char* dev, unsigned gain) {
     return static_cast<EigenLite*>(impl)->setHeadphoneGain(dev, gain);
 }

@@ -136,9 +136,7 @@ namespace pic
                 private:
                     usbdevice_t::impl_t *impl_;
                     unsigned char *current_;
-#ifndef PI_MACOSX
                     void *guard_;
-#endif
                     bool dirty_;
             };
 

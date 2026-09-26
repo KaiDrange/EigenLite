@@ -43,6 +43,7 @@ class EigenLite {
     bool setHeadphoneEnabled(const char* dev, bool enabled);
 
     bool setHeadphoneGain(const char* dev, unsigned gain);
+    bool setHeadphoneLimited(const char* dev, bool limited);
 
     // logging
     static void logmsg(const char* msg);

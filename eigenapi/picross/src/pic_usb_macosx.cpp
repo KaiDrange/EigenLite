@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <memory>
+#include <mutex>
 #include <iostream>
 #include <cstdio>
 
@@ -27,6 +28,7 @@
 #include <picross/pic_log.h>
 #include <picross/pic_cfrunloop.h>
 #include <picross/pic_usb.h>
+#include <picross/pic_usb_iso_out.h>
 #include <picross/pic_atomic.h>
 #include <picross/pic_fastalloc.h>
 #include <picross/pic_time.h>
@@ -351,6 +353,7 @@ namespace
         IOUSBLowLatencyIsocFrame *frame;
         unsigned char *buffer;
         UInt64 fnum;
+        bool output_submitted = false;
     };
 
     struct macosx_usbpipe_t: virtual public pic::lckobject_t
@@ -405,6 +408,7 @@ namespace
         void start();
 
         unsigned char *iso_write_start();
+        unsigned char *iso_write_at(UInt64 frame);
         unsigned char *iso_write_advance(unsigned n);
 
         pic::usbdevice_t::iso_out_pipe_t *pipe;
@@ -414,6 +418,12 @@ namespace
         unsigned write_frame_;
         unsigned uframe_per_frame_;
         unsigned inflight_;
+        unsigned audio_ready_count_ = 0;
+        unsigned audio_skipped_count_ = 0;
+        std::mutex audio_mutex_;
+        UInt64 current_audio_frame_ = 0;
+        UInt64 next_audio_frame_ = 0;
+        unsigned long long audio_report_time_ = 0;
     };
 
     typedef pic::lcklist_t<macosx_usbpipe_in_t *>::lcktype pipe_list_t;
@@ -703,6 +713,11 @@ void macosx_usbpipe_in_t::start()
 void macosx_usbpipe_out_t::start()
 {
     pic::logmsg() << "out pipe starting...";
+    {
+        std::lock_guard<std::mutex> lock(audio_mutex_);
+        next_audio_frame_ = 0;
+        current_audio_frame_ = 0;
+    }
     counter_=0;
 
     for(unsigned i=0;i<ISO_OUT_URBS;i++)
@@ -948,6 +963,9 @@ void macosx_usbpipe_out_t::completed(usburb_t *u, IOReturn result)
 
 void macosx_usbpipe_out_t::submit(usburb_t *u)
 {
+    // Do not clear/reschedule an URB while audio_write is filling its buffer.
+    std::unique_lock<std::mutex> lock(audio_mutex_);
+    u->output_submitted = false;
     IOUSBInterfaceInterface197 **intf = impl_->device.interface;
     IOReturn e;
 
@@ -996,15 +1014,18 @@ restart:
         if(e==kIOReturnNoBandwidth)
         {
             pic::logmsg() << "can't submit write request due to unsufficient bandwidth 0x" << std::hex << e;
+            lock.unlock();
             impl_->pipe_kill(PIPE_NO_BANDWIDTH);
             return;
         }
 
         pic::logmsg() << "can't submit write request 0x" << std::hex << e << " 0x" << std::hex << kIOReturnIsoTooOld;
+        lock.unlock();
         impl_->pipe_kill(PIPE_UNKNOWN_ERROR);
         return;
     }
 
+    u->output_submitted = true;
     counter_+=ISO_OUT_FRAMES_PER_URB*uframe_per_frame_;
     ++inflight_;
     impl_->inc_inflight();
@@ -1637,55 +1658,83 @@ void pic::usbdevice_t::detach()
     impl_->detach();
 }
 
+unsigned char *macosx_usbpipe_out_t::iso_write_at(UInt64 frame)
+{
+    const unsigned index = pic::detail::scheduled_iso_out_frame(
+        (impl_->state_ & PIPES_STATE_MASK) == PIPES_RUNNING,
+        frame, ISO_OUT_URBS, ISO_OUT_FRAMES_PER_URB,
+        [this](unsigned urb) {
+            return pic::detail::iso_out_span { urbs[urb].fnum / uframe_per_frame_, urbs[urb].output_submitted };
+        });
+    if (index == ISO_OUT_URBS * ISO_OUT_FRAMES_PER_URB) return 0;
+    write_urb_ = index / ISO_OUT_FRAMES_PER_URB;
+    write_frame_ = (index % ISO_OUT_FRAMES_PER_URB) * uframe_per_frame_;
+    current_audio_frame_ = frame;
+    return urbs[write_urb_].buffer + (write_frame_ / uframe_per_frame_) * size_;
+}
+
 unsigned char *macosx_usbpipe_out_t::iso_write_start()
 {
-    // find current write position in buffer
-    unsigned last_status = kUSBLowLatencyIsochTransferKey;
-    for(;;)
+    // Frames remain marked pending for almost all of their lifetime. Locate
+    // a safely-future submitted buffer using the actual USB bus clock instead.
+    unsigned char *buffer = 0;
+    UInt64 bus_frame = 0;
+    IOReturn clock_result = kIOReturnNotReady;
+    if ((impl_->state_ & PIPES_STATE_MASK) == PIPES_RUNNING)
     {
-        unsigned status = urbs[write_urb_].frame[write_frame_].frStatus;
-
-        if(status!=0 && status!=kUSBLowLatencyIsochTransferKey)
-        {
-            return 0;
-        }
-
-        if(last_status==0 && status==kUSBLowLatencyIsochTransferKey)
-            break;
-
-        last_status=status;
-        iso_write_advance(1);
+        AbsoluteTime time;
+        IOUSBInterfaceInterface197 **intf = impl_->device.interface;
+        clock_result = (*intf)->GetBusFrameNumber(intf, &bus_frame, &time);
+        if (clock_result == kIOReturnSuccess)
+            buffer = iso_write_at(pic::detail::next_iso_out_frame(bus_frame, next_audio_frame_, ISO_OUT_OFFSET));
     }
-
-    return iso_write_advance(ISO_OUT_OFFSET);
+    if (buffer) ++audio_ready_count_;
+    else ++audio_skipped_count_;
+    const unsigned long long now = pic_microtime();
+    if (now - audio_report_time_ >= 1000000ULL)
+    {
+        pic::logmsg() << "[USB audio] pipe=" << piperef_
+            << " ready=" << audio_ready_count_ << " skipped=" << audio_skipped_count_
+            << " busFrame=" << bus_frame << " writeFrame=" << current_audio_frame_
+            << " state=0x" << std::hex << (impl_->state_ & PIPES_STATE_MASK)
+            << " clockResult=0x" << clock_result;
+        audio_report_time_ = now;
+        audio_ready_count_ = audio_skipped_count_ = 0;
+    }
+    return buffer;
 }
 
 unsigned char *macosx_usbpipe_out_t::iso_write_advance(unsigned n)
 {
-    unsigned f=(write_urb_*ISO_OUT_FRAMES_PER_URB*uframe_per_frame_)+write_frame_+n*uframe_per_frame_;
-    write_urb_=(f/(ISO_OUT_FRAMES_PER_URB*uframe_per_frame_))%ISO_OUT_URBS;
-    write_frame_=f%(ISO_OUT_FRAMES_PER_URB*uframe_per_frame_);
-    return urbs[write_urb_].buffer+(write_frame_/uframe_per_frame_)*size_;
+    // Look up each subsequent frame as well: a resync can leave gaps between URBs.
+    return iso_write_at(current_audio_frame_ + n);
 }
 
-pic::usbdevice_t::iso_out_guard_t::iso_out_guard_t(usbdevice_t *d): impl_(d->impl_), current_(0)
+pic::usbdevice_t::iso_out_guard_t::iso_out_guard_t(usbdevice_t *d)
+    : impl_(d->impl_), current_(0), guard_(0), dirty_(false)
 {
-    if(!impl_->outpipe)
-    {
-        return;
-    }
-
-    current_ = impl_->outpipe->iso_write_start();
+    if (!impl_->outpipe) return;
+    macosx_usbpipe_out_t *pipe = impl_->outpipe;
+    std::unique_lock<std::mutex> lock(pipe->audio_mutex_);
+    current_ = pipe->iso_write_start();
+    guard_ = pipe;
+    lock.release(); // iso_out_guard_t now owns the lock until packetization finishes.
 }
 
 pic::usbdevice_t::iso_out_guard_t::~iso_out_guard_t()
 {
+    if (guard_)
+    {
+        macosx_usbpipe_out_t *pipe = static_cast<macosx_usbpipe_out_t *>(guard_);
+        if (dirty_) pipe->next_audio_frame_ = pipe->current_audio_frame_ + 1;
+        pipe->audio_mutex_.unlock();
+    }
 }
 
 unsigned char *pic::usbdevice_t::iso_out_guard_t::advance()
 {
-    PIC_ASSERT(impl_->outpipe);
-    current_=impl_->outpipe->iso_write_advance(1);
+    PIC_ASSERT(guard_);
+    current_ = static_cast<macosx_usbpipe_out_t *>(guard_)->iso_write_advance(1);
     return current_;
 }
 

@@ -58,6 +58,7 @@ public:
     virtual bool writeAudio(const float*, unsigned, unsigned) { return false; }
     virtual bool setHeadphoneEnabled(bool) { return false; }
     virtual bool setHeadphoneGain(unsigned) { return false; }
+    virtual bool setHeadphoneLimited(bool) { return false; }
 
     pic::usbdevice_t* usbDevice() { return pDevice_; }
 
@@ -196,6 +197,7 @@ public:
     bool writeAudio(const float* stereo, unsigned numFrames, unsigned period) override;
     bool setHeadphoneEnabled(bool enabled) override;
     bool setHeadphoneGain(unsigned gain) override;
+    bool setHeadphoneLimited(bool limited) override;
 
     static std::vector<std::string> availableDevices();
 

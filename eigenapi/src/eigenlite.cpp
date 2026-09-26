@@ -422,6 +422,11 @@ bool EigenLite::setHeadphoneEnabled(const char* dev, bool enabled) {
     return device != nullptr && device->setHeadphoneEnabled(enabled);
 }
 
+bool EigenLite::setHeadphoneLimited(const char* dev, bool limited) {
+    auto device = findAudioDevice(dev);
+    return device != nullptr && device->setHeadphoneLimited(limited);
+}
+
 bool EigenLite::setHeadphoneGain(const char* dev, unsigned gain) {
     if (gain > 127) return false;
     auto device = findAudioDevice(dev);

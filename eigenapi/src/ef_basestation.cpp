@@ -177,6 +177,12 @@ bool EF_BaseStation::setHeadphoneEnabled(bool enabled) {
     return true;
 }
 
+bool EF_BaseStation::setHeadphoneLimited(bool limited) {
+    if (pLoop_ == nullptr || stopping()) return false;
+    pLoop_->headphone_limit(limited);
+    return true;
+}
+
 bool EF_BaseStation::setHeadphoneGain(unsigned gain) {
     if (pLoop_ == nullptr || stopping()) return false;
     pLoop_->headphone_gain(gain);

@@ -92,10 +92,13 @@ public:
 
     // Output is disabled by default. Settings use existing hardware controls;
     // enable explicitly before playback. Gain is 0..127 (higher is louder),
-    // default 70. The existing headphone limiter remains enabled.
+    // default 70. Requested gain in dB = gain - 127 (70 means -57 dB).
+    // The headphone limiter defaults on and caps effective gain at -30 dB.
+    // setHeadphoneLimited(false) permits the full range up to 0 dB.
     // Same device selection, serialization and dispatch-only result as writeAudio.
     bool setHeadphoneEnabled(const char* dev, bool enabled);
     bool setHeadphoneGain(const char* dev, unsigned gain);
+    bool setHeadphoneLimited(const char* dev, bool limited);
 
     void setPollTime(unsigned pollTime);
 

@@ -63,6 +63,7 @@ LED states are cleared on `stop()`.
 bool writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period);
 bool setHeadphoneEnabled(const char* dev, bool enabled);
 bool setHeadphoneGain(const char* dev, unsigned gain);
+bool setHeadphoneLimited(const char* dev, bool limited);
 ```
 
 Use a non-empty device identifier from `connected()`. These calls target one
@@ -71,8 +72,14 @@ Wait until `process()` has returned after connection before configuring output.
 
 Output is disabled by default. Enable it explicitly with
 `setHeadphoneEnabled(dev, true)`. Gain is the native 0–127 value (higher is louder),
-default 70; values above 127 are rejected. The existing headphone limiter stays
-at its enabled default. Reapply settings when a device reconnects.
+default 70; values above 127 are rejected. The requested gain in dB is
+`gain - 127`: 33 means -94 dB, 70 means -57 dB, and 97 means -30 dB.
+The hardware headphone limit defaults to enabled and caps effective gain at -30 dB.
+`setHeadphoneLimited(dev, false)` removes that cap, allowing gain 127 (0 dB).
+Set the intended gain before removing the limit to avoid exposing an older, louder
+register value. Enabling the limit does not change the requested gain register;
+callers should also clamp their saved gain if desired.
+Reapply settings when a device reconnects.
 
 `writeAudio` consumes `numFrames` stereo frames (2 × `numFrames` floats, L/R
 interleaved, finite values in [-1, 1]) synchronously; it does not retain the pointer.

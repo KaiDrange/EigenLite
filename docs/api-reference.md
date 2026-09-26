@@ -57,7 +57,7 @@ Key addressing matches key event addressing (see key layout in `docs/reference/d
 
 LED states are cleared on `stop()`.
 
-### Alpha/Tau Audio Output
+### Alpha/Tau Audio Output (Tested on macOS only)
 
 ```cpp
 bool writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period);
@@ -66,46 +66,18 @@ bool setHeadphoneGain(const char* dev, unsigned gain);
 bool setHeadphoneLimited(const char* dev, bool limited);
 ```
 
-Use a non-empty device identifier from `connected()`. These calls target one
-Alpha/Tau; null identifiers, unknown/disconnected devices and Pico return false.
-Wait until `process()` has returned after connection before configuring output.
+Wait until `process()` has returned after connection before configuring output. 
 
 Output is disabled by default. Enable it explicitly with
 `setHeadphoneEnabled(dev, true)`. Gain is the native 0–127 value (higher is louder),
 default 70; values above 127 are rejected. The requested gain in dB is
-`gain - 127`: 33 means -94 dB, 70 means -57 dB, and 97 means -30 dB.
-The hardware headphone limit defaults to enabled and caps effective gain at -30 dB.
+`gain - 127`. The hardware headphone limit defaults to enabled and caps effective gain at -30 dB.
 `setHeadphoneLimited(dev, false)` removes that cap, allowing gain 127 (0 dB).
-Set the intended gain before removing the limit to avoid exposing an older, louder
-register value. Enabling the limit does not change the requested gain register;
-callers should also clamp their saved gain if desired.
-Reapply settings when a device reconnects.
 
-`writeAudio` consumes `numFrames` stereo frames (2 × `numFrames` floats, L/R
-interleaved, finite values in [-1, 1]) synchronously; it does not retain the pointer.
-Null audio buffers, zero frame counts and periods above 3 return false.
-Audio must already be converted to the device's 48 kHz stream:
-
-| Host rate | Public period constant | EigenD quantum after caller conversion |
-| --- | --- | --- |
-| 48 kHz | `Eigenharp::AUDIO_PERIOD_48` (1) | 512 frames |
-| 96 kHz | `Eigenharp::AUDIO_PERIOD_96` (2) | 256 frames |
-| 44.1 kHz | `Eigenharp::AUDIO_PERIOD_44` (3) | approximately 557 frames |
-
-The transport accepts arbitrary positive frame counts. Start with 48 kHz and
-512 frames to preserve EigenD's proven timing. Period 0 omits the timing command;
-smaller quanta and omission of repeated timing commands still require hardware
-validation. EigenLite does not accumulate, resample, pace writes or generate silence.
-
-A true result means the call was forwarded to the existing transport, **not**
-that all frames were queued or played. The low-level writer returns no status
-and can silently drop audio when USB output space is unavailable.
-
-Serialize these calls with `process()`, lifecycle calls, LED changes and all other
-device access; no concurrent-device-access or real-time guarantee is added.
-For a separate host audio thread, keep the FIFO in the application and drain it
-on the thread that owns EigenLite. Headphone controls perform hardware register
-access and belong outside the host's real-time audio callback.
+`writeAudio` accepts 48 kHz interleaved stereo floats in [-1, 1]. numFrames is the number of stereo frames. 
+The caller handles any resampling and may reuse the buffer when the call returns. period selects the transport 
+timing mode; it does not change the sample rate. Period 0 omits the timing command. At 48 kHz, Tau playback has 
+been tested with 512-frame writes using period 1, and with 128-frame writes using repeating periods 1, 0, 0, 0.
 
 ### Configuration
 

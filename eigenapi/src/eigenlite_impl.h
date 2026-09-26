@@ -39,9 +39,7 @@ class EigenLite {
     void setLED(const char* dev, unsigned course, unsigned key, unsigned colour);
 
     bool writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period);
-
     bool setHeadphoneEnabled(const char* dev, bool enabled);
-
     bool setHeadphoneGain(const char* dev, unsigned gain);
     bool setHeadphoneLimited(const char* dev, bool limited);
 

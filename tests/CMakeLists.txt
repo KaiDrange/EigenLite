@@ -31,6 +31,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 if(BUILD_TESTING)
+    add_executable(USBTransferBuffersTest USBTransferBuffersTest.cpp)
+    add_test(NAME USBTransferBuffersTest COMMAND USBTransferBuffersTest)
+
     add_executable(EigenLiteTests
         main_test.cpp
         SmokeTest.cpp

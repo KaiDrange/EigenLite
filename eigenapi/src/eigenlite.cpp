@@ -402,6 +402,7 @@ void EigenLite::setLED(const char* dev, unsigned course, unsigned key, unsigned 
         }
     }
 }
+
 EF_Harp* EigenLite::findAudioDevice(const char* dev) {
     if (dev == nullptr || *dev == '\0' || deadDevices_.count(dev) != 0) return nullptr;
     for (auto device : devices_) {
@@ -411,25 +412,25 @@ EF_Harp* EigenLite::findAudioDevice(const char* dev) {
     return nullptr;
 }
 
-bool EigenLite::writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period) {
+bool EigenLite::writeAudio(const char* dev, const float* stereo, const unsigned numFrames, const unsigned period) {
     if (stereo == nullptr || numFrames == 0 || period > Eigenharp::AUDIO_PERIOD_44) return false;
-    auto device = findAudioDevice(dev);
+    const auto device = findAudioDevice(dev);
     return device != nullptr && device->writeAudio(stereo, numFrames, period);
 }
 
-bool EigenLite::setHeadphoneEnabled(const char* dev, bool enabled) {
-    auto device = findAudioDevice(dev);
+bool EigenLite::setHeadphoneEnabled(const char* dev, const bool enabled) {
+    const auto device = findAudioDevice(dev);
     return device != nullptr && device->setHeadphoneEnabled(enabled);
 }
 
-bool EigenLite::setHeadphoneLimited(const char* dev, bool limited) {
-    auto device = findAudioDevice(dev);
+bool EigenLite::setHeadphoneLimited(const char* dev, const bool limited) {
+    const auto device = findAudioDevice(dev);
     return device != nullptr && device->setHeadphoneLimited(limited);
 }
 
-bool EigenLite::setHeadphoneGain(const char* dev, unsigned gain) {
+bool EigenLite::setHeadphoneGain(const char* dev, const unsigned gain) {
     if (gain > 127) return false;
-    auto device = findAudioDevice(dev);
+    const auto device = findAudioDevice(dev);
     return device != nullptr && device->setHeadphoneGain(gain);
 }
 }  // namespace EigenApi

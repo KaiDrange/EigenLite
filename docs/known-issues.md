@@ -16,13 +16,13 @@ Active limitations and deferred work. Sourced from code analysis and `docs/archi
 
 ---
 
-## Unimplemented Hardware Features
+## Experimental Hardware Features
 
 ### Headphone Support (Alpha/Tau)
 - The `alpha2::active_t` API has full headphone control: `headphone_enable`, `headphone_gain`, `headphone_limit`.
-- EigenLite never calls these. Not exposed in public API.
-- Deferred because EigenLite was originally designed for non-audio-rate usage.
-- Risk: unknown whether audio clock initialisation is correct; untested.
+- This is exposed by the Public API, but is currently only tested on Tau on macOS.
+
+## Unimplemented Hardware Features
 
 ### Microphone Support (Alpha)
 - `alpha2::active_t` has mic API: `mic_enable`, `mic_gain`, `mic_type`, `kbd_mic` delegate callback.

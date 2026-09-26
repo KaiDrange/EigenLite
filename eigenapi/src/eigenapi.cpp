@@ -64,19 +64,19 @@ void Eigenharp::setDeviceFilter(unsigned allBasePico, unsigned devEnum) {
     static_cast<EigenLite*>(impl)->setDeviceFilter(allBasePico, devEnum);
 }
 
-bool Eigenharp::writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period) {
+bool Eigenharp::writeAudio(const char* dev, const float* stereo, const unsigned numFrames, const unsigned period) const {
     return static_cast<EigenLite*>(impl)->writeAudio(dev, stereo, numFrames, period);
 }
 
-bool Eigenharp::setHeadphoneEnabled(const char* dev, bool enabled) {
+bool Eigenharp::setHeadphoneEnabled(const char* dev, const bool enabled) const {
     return static_cast<EigenLite*>(impl)->setHeadphoneEnabled(dev, enabled);
 }
 
-bool Eigenharp::setHeadphoneLimited(const char* dev, bool limited) {
+bool Eigenharp::setHeadphoneLimited(const char* dev, const bool limited) const {
     return static_cast<EigenLite*>(impl)->setHeadphoneLimited(dev, limited);
 }
 
-bool Eigenharp::setHeadphoneGain(const char* dev, unsigned gain) {
+bool Eigenharp::setHeadphoneGain(const char* dev, const unsigned gain) const {
     return static_cast<EigenLite*>(impl)->setHeadphoneGain(dev, gain);
 }
 

@@ -102,8 +102,15 @@ namespace alpha2
             void msg_flush();
             void msg_send_midi(const unsigned char *data, unsigned len);
 
-            // EigenD host timing modes: 1 = 48 kHz, 2 = 96 kHz, 3 = 44.1 kHz.
-            // Samples are already converted to 48 kHz; 0 omits the timing command.
+            // The period parameter is a bit confusing. Despite some comments indicating otherwise,
+            // EigenD appears to convert 512 host frames to 48 kHz before calling audio_write:
+            // period 1: 48 kHz host -> 512 stereo frames
+            // period 2: 96 kHz host -> 256 stereo frames
+            // period 3: 44.1 kHz host -> approximately 557 stereo frames.
+            // the hardware meaning of the timing command is not obvious, but from experimentation:
+            // 512 stereo frames with period 1 works fine. Likewise, 4x128 stereo frames with
+            // periods 1, 0, 0, 0 also works fine. (4x128 stereo frames with periods 1, 1, 1, 1 causes the
+            // base station to stop functioning until a power cycle.). Mode 2 and 3 are untested.
             void audio_write(const float *stereo, unsigned len, unsigned period);
 
             void set_tau_mode(bool);

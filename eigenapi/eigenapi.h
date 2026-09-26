@@ -78,13 +78,13 @@ public:
     };
 
     // See docs/api-reference.md for timing, threading and return semantics.
-    bool writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period);
+    bool writeAudio(const char* dev, const float* stereo, unsigned numFrames, unsigned period) const;
 
     // Hardware controls: output defaults off; gain 0..127 maps to -127..0 dB.
     // Gain defaults to 70; the enabled headphone limit caps output at -30 dB.
-    bool setHeadphoneEnabled(const char* dev, bool enabled);
-    bool setHeadphoneGain(const char* dev, unsigned gain);
-    bool setHeadphoneLimited(const char* dev, bool limited);
+    bool setHeadphoneEnabled(const char* dev, bool enabled) const;
+    bool setHeadphoneGain(const char* dev, unsigned gain) const;
+    bool setHeadphoneLimited(const char* dev, bool limited) const;
 
     void setPollTime(unsigned pollTime);
 
